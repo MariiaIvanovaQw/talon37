@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Талон №37 — симулятор школьной столовой</title>
+<style>
+  :root{
+    --bg:#f3efe2;
+    --paper-line:rgba(31,61,46,0.07);
+    --ink:#1f3d2e;
+    --ink-soft:#3f5a49;
+    --muted:#7a7360;
+    --card-bg:#fffdf5;
+    --card-border:#cdc3a1;
+    --card-border-strong:#a99c74;
+    --stamp-red:#8c3230;
+    --stamp-green:#4c6b4f;
+    --gold:#a8790f;
+    --gold-strong:#8a6209;
+    --focus:#1f3d2e;
+    --track:#e4ddc6;
+    --shadow:rgba(60,50,20,0.18);
+
+    --font-head:"Arial Narrow","Oswald",sans-serif;
+    --font-body:Georgia,"Times New Roman",serif;
+    --font-mono:ui-monospace,"Consolas","Courier New",monospace;
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#181c16;
+      --paper-line:rgba(200,215,190,0.06);
+      --ink:#dfe8d6;
+      --ink-soft:#b9c6ae;
+      --muted:#8b8a76;
+      --card-bg:#20241c;
+      --card-border:#3c4433;
+      --card-border-strong:#57604a;
+      --stamp-red:#d9736f;
+      --stamp-green:#7fb886;
+      --gold:#d9ab4c;
+      --gold-strong:#e6c069;
+      --focus:#dfe8d6;
+      --track:#2b3025;
+      --shadow:rgba(0,0,0,0.45);
+    }
+  }
+
+  *{box-sizing:border-box;}
+
+  html,body{
+    margin:0;
+    padding:0;
+    background-color:var(--bg);
+    background-image:repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 27px,
+      var(--paper-line) 28px
+    );
+    color:var(--ink);
+    font-family:var(--font-body);
+    min-height:100%;
+  }
+
+  body{
+    padding:24px 16px 56px;
+    display:flex;
+    justify-content:center;
+  }
+
+  .wrap{
+    width:100%;
+    max-width:560px;
+  }
+
+  header{
+    text-align:center;
+    margin-bottom:20px;
+  }
+
+  h1{
+    font-family:var(--font-head);
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    font-size:clamp(1.5rem,6vw,2.1rem);
+    margin:0 0 6px;
+    color:var(--ink);
+  }
+
+  .subtitle{
+    font-family:var(--font-body);
+    font-style:italic;
+    color:var(--ink-soft);
+    font-size:clamp(0.85rem,3vw,0.98rem);
+    margin:0;
+  }
+
+  .meters{
+    display:grid;
+    gap:12px;
+    margin:22px 0 18px;
+  }
+
+  .meter{
+    background:var(--card-bg);
+    border:1px solid var(--card-border);
+    border-radius:8px;
+    padding:10px 14px;
+  }
+
+  .meter-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:8px;
+    margin-bottom:6px;
+  }
+
+  .meter-label{
+    font-family:var(--font-head);
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    font-size:0.78rem;
+    color:var(--muted);
+  }
+
+  .meter-value{
+    font-family:var(--font-mono);
+    font-variant-numeric:tabular-nums;
+    font-size:0.95rem;
+    font-weight:600;
+    color:var(--ink);
+  }
+
+  .track{
+    height:8px;
+    border-radius:5px;
+    background:var(--track);
+    overflow:hidden;
+  }
+
+  .fill{
+    height:100%;
+    border-radius:5px;
+    transition:width 0.5s ease;
+    background:var(--stamp-green);
+  }
+
+  .fill.warn{background:var(--gold);}
+  .fill.danger{background:var(--stamp-red);}
+
+  .dots{
+    display:flex;
+    justify-content:center;
+    gap:14px;
+    margin:18px 0 26px;
+  }
+
+  .dot{
+    width:34px;
+    height:34px;
+    border-radius:50%;
+    border:2px solid var(--card-border-strong);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:var(--font-mono);
+    font-size:0.72rem;
+    font-variant-numeric:tabular-nums;
+    color:var(--muted);
+    background:var(--card-bg);
+    flex:0 0 auto;
+  }
+
+  .dot.done{
+    background:var(--ink);
+    border-color:var(--ink);
+    color:var(--bg);
+  }
+
+  .dot.current{
+    border-color:var(--gold);
+    color:var(--gold-strong);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--gold) 25%, transparent);
+  }
+
+  .ticket{
+    position:relative;
+    background:var(--card-bg);
+    border:1px solid var(--card-border);
+    border-radius:14px;
+    padding:26px 26px 24px;
+    box-shadow:0 6px 18px var(--shadow);
+  }
+
+  .ticket::before,
+  .ticket::after{
+    content:"";
+    position:absolute;
+    top:50%;
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    background:var(--bg);
+    box-shadow:0 0 0 1px var(--card-border) inset;
+    transform:translateY(-50%);
+  }
+
+  .ticket::before{left:-13px;}
+  .ticket::after{right:-13px;}
+
+  .ticket-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    border-bottom:1px dashed var(--card-border-strong);
+    padding-bottom:10px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+
+  .ticket-num{
+    font-family:var(--font-mono);
+    font-weight:700;
+    letter-spacing:0.04em;
+    font-size:0.95rem;
+    color:var(--ink);
+  }
+
+  .ticket-ref{
+    font-family:var(--font-head);
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    font-size:0.78rem;
+    color:var(--muted);
+  }
+
+  .ticket-title{
+    font-family:var(--font-head);
+    font-weight:700;
+    font-size:1.15rem;
+    margin:0 0 10px;
+    color:var(--ink);
+  }
+
+  .scenario{
+    font-family:var(--font-body);
+    font-size:1rem;
+    line-height:1.5;
+    color:var(--ink-soft);
+    margin:0 0 18px;
+  }
+
+  .options{
+    display:grid;
+    gap:10px;
+    margin-bottom:6px;
+  }
+
+  .option{
+    font-family:var(--font-body);
+    font-size:0.96rem;
+    line-height:1.4;
+    text-align:left;
+    background:var(--bg);
+    border:2px solid var(--card-border);
+    border-radius:9px;
+    padding:12px 14px;
+    color:var(--ink);
+    cursor:pointer;
+    transition:border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+  }
+
+  .option:hover:not(:disabled){
+    border-color:var(--card-border-strong);
+  }
+
+  .option:active:not(:disabled){
+    transform:translateY(1px);
+  }
+
+  .option:focus-visible{
+    outline:3px solid var(--focus);
+    outline-offset:2px;
+  }
+
+  .option:disabled{
+    cursor:default;
+    opacity:0.62;
+  }
+
+  .option.chosen-correct{
+    border-color:var(--stamp-green);
+    background:color-mix(in srgb, var(--stamp-green) 14%, var(--bg));
+    opacity:1;
+  }
+
+  .option.chosen-incorrect{
+    border-color:var(--stamp-red);
+    background:color-mix(in srgb, var(--stamp-red) 14%, var(--bg));
+    opacity:1;
+  }
+
+  .result{
+    margin-top:16px;
+    position:relative;
+    min-height:1px;
+  }
+
+  .stamp-row{
+    display:flex;
+    justify-content:center;
+    margin:8px 0 16px;
+  }
+
+  .stamp{
+    font-family:var(--font-head);
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    font-size:1.3rem;
+    padding:8px 22px;
+    border:3px solid currentColor;
+    border-radius:6px;
+    transform:rotate(-4deg);
+    display:inline-block;
+    animation:stamp-in 0.35s ease-out;
+  }
+
+  .stamp.approved{color:var(--stamp-green);}
+  .stamp.violation{color:var(--stamp-red);}
+
+  @keyframes stamp-in{
+    0%{
+      opacity:0;
+      transform:rotate(-4deg) scale(2.2);
+    }
+    60%{
+      opacity:1;
+      transform:rotate(-4deg) scale(0.92);
+    }
+    100%{
+      opacity:1;
+      transform:rotate(-4deg) scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .stamp{animation:none;}
+  }
+
+  .explanation{
+    font-family:var(--font-body);
+    font-size:0.95rem;
+    line-height:1.5;
+    color:var(--ink-soft);
+    background:var(--track);
+    border-left:3px solid var(--gold);
+    border-radius:4px;
+    padding:10px 14px;
+    margin:0 0 14px;
+  }
+
+  .deltas{
+    display:flex;
+    gap:18px;
+    flex-wrap:wrap;
+    font-family:var(--font-mono);
+    font-variant-numeric:tabular-nums;
+    font-size:0.9rem;
+    margin-bottom:16px;
+  }
+
+  .delta-label{color:var(--muted);}
+
+  .delta-value.pos{color:var(--stamp-green);}
+  .delta-value.neg{color:var(--stamp-red);}
+  .delta-value.zero{color:var(--muted);}
+
+  .next-btn, .restart-btn{
+    font-family:var(--font-head);
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    font-size:0.92rem;
+    font-weight:700;
+    color:var(--bg);
+    background:var(--ink);
+    border:none;
+    border-radius:8px;
+    padding:12px 18px;
+    cursor:pointer;
+    width:100%;
+  }
+
+  .next-btn:hover, .restart-btn:hover{
+    background:var(--ink-soft);
+  }
+
+  .next-btn:focus-visible, .restart-btn:focus-visible{
+    outline:3px solid var(--gold);
+    outline-offset:2px;
+  }
+
+  .end-screen h2{
+    font-family:var(--font-head);
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    font-size:1.3rem;
+    margin:0 0 14px;
+    text-align:center;
+  }
+
+  .end-stats{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    margin-bottom:16px;
+  }
+
+  .end-stat{
+    background:var(--bg);
+    border:1px solid var(--card-border);
+    border-radius:8px;
+    padding:10px 12px;
+    text-align:center;
+  }
+
+  .end-stat .meter-label{display:block;margin-bottom:4px;}
+  .end-stat .meter-value{font-size:1.1rem;}
+
+  .verdict{
+    font-family:var(--font-body);
+    font-size:1rem;
+    line-height:1.5;
+    padding:12px 14px;
+    border-radius:6px;
+    margin-bottom:18px;
+    border-left:3px solid currentColor;
+  }
+
+  .verdict.clean{color:var(--stamp-green); background:color-mix(in srgb, var(--stamp-green) 12%, var(--card-bg));}
+  .verdict.warn{color:var(--gold-strong); background:color-mix(in srgb, var(--gold) 14%, var(--card-bg));}
+  .verdict.bad{color:var(--stamp-red); background:color-mix(in srgb, var(--stamp-red) 12%, var(--card-bg));}
+
+  .law-list{
+    margin:0 0 14px;
+    padding-left:20px;
+    font-size:0.94rem;
+    line-height:1.55;
+    color:var(--ink-soft);
+  }
+
+  .law-list li{margin-bottom:8px;}
+  .law-list b{color:var(--ink);}
+
+  .footnote{
+    font-family:var(--font-body);
+    font-style:italic;
+    font-size:0.85rem;
+    color:var(--muted);
+    border-top:1px dashed var(--card-border-strong);
+    padding-top:12px;
+    margin-bottom:18px;
+  }
+
+  .sr-only{
+    position:absolute;
+    width:1px;height:1px;
+    padding:0;margin:-1px;
+    overflow:hidden;
+    clip:rect(0,0,0,0);
+    white-space:nowrap;
+    border:0;
+  }
+
+  @media (max-width:380px){
+    .ticket{padding:20px 16px 18px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Талон №37</h1>
+    <p class="subtitle">Смена в школьной столовой — по мотивам статьи 37 ФЗ №273 «Об образовании в РФ»</p>
+  </header>
+
+  <div class="meters">
+    <div class="meter">
+      <div class="meter-top">
+        <span class="meter-label">Соответствие ст. 37</span>
+        <span class="meter-value" id="complianceValue">60%</span>
+      </div>
+      <div class="track"><div class="fill" id="complianceFill"></div></div>
+    </div>
+  </div>
+
+  <div class="dots" id="dots" aria-hidden="true"></div>
+
+  <div id="game" aria-live="polite"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // Очки за верные ответы подобраны так, чтобы их сумма (6+5+8+11+10=40)
+  // ровно замыкала шкалу от старта в 60% до 100% — без перелёта за потолок.
+  // Штрафы за неверные оставлены как в исходном сценарии: при таком балансе
+  // ЛЮБОЙ один неверный ответ гарантированно уводит итог в диапазон 60–84%
+  // ("с замечаниями"), а не даёт зачесть смену как чистую.
+  var TICKETS = [
+    {
+      ref: "ч. 1 ст. 37",
+      title: "Кто вообще отвечает?",
+      scenario: "Родительский комитет спорит: «Питание — это забота родителей, пусть сами скидываются и договариваются с кафе напротив». Твоё решение как директора:",
+      options: [
+        {
+          text: "Это обязанность самой школы — организуем питание сами",
+          correct: true,
+          compliance: 6,
+          explain: "По части 1 статьи 37 организация питания обучающихся прямо возлагается на образовательную организацию — то есть на школу, а не на родителей и не на город."
+        },
+        {
+          text: "Пусть родители разбираются сами, школа тут ни при чём",
+          correct: false,
+          compliance: -18,
+          explain: "Так нельзя переложить ответственность: закон в части 1 закрепляет её именно за образовательной организацией."
+        }
+      ]
+    },
+    {
+      ref: "ч. 2 ст. 37",
+      title: "Секунда на суп",
+      scenario: "Завуч предлагает сжать перемены до 5 минут ради двух дополнительных уроков — «дети быстро перекусят на бегу». Расписание утверждаешь ты:",
+      options: [
+        {
+          text: "Оставляю нормальный перерыв на обед",
+          correct: true,
+          compliance: 5,
+          explain: "Верно: часть 2 статьи 37 прямо требует, чтобы расписание предусматривало перерыв достаточной продолжительности для питания — не «между делом»."
+        },
+        {
+          text: "Сокращаю перемены до 5 минут ради доп. уроков",
+          correct: false,
+          compliance: -14,
+          explain: "Формально нарушение: 5 минут не тянут на «перерыв достаточной продолжительности», который требует часть 2."
+        }
+      ]
+    },
+    {
+      ref: "ч. 2.1 ст. 37",
+      title: "Дыра в бюджете",
+      scenario: "В квартальном бюджете не хватает денег. Бухгалтер шепчет: «Давай пока приостановим бесплатные обеды у 1–4 классов, потом наверстаем — никто не заметит».",
+      options: [
+        {
+          text: "Нет — это обязательная норма, обеды остаются",
+          correct: true,
+          compliance: 8,
+          explain: "Правильно: часть 2.1 гарантирует ученикам начальной школы в государственных и муниципальных организациях бесплатное горячее питание не реже раза в день, с горячим блюдом, за счёт бюджета. Это не опция, а обязанность."
+        },
+        {
+          text: "Временно приостанавливаем до конца квартала",
+          correct: false,
+          compliance: -25,
+          explain: "Так делать нельзя — приостановка прямо нарушает часть 2.1: это федеральная гарантия, а не решение «по обстоятельствам»."
+        }
+      ]
+    },
+    {
+      ref: "ч. 2.1 ст. 37 — границы действия",
+      title: "А почему не нам?",
+      scenario: "Студенты колледжа при вашей организации возмущены: «У малышей бесплатный горячий обед, а у нас нет — это же дискриминация!» Как объяснить по закону?",
+      options: [
+        {
+          text: "Гарантия ч. 2.1 адресна: она про 1–4 классы гос./муниципальных школ, на колледж формально не распространяется",
+          correct: true,
+          compliance: 11,
+          explain: "Именно так: формулировка части 2.1 узкая — речь про начальное общее образование в государственных и муниципальных организациях. Питание для остальных возможно, но уже не как безусловная федеральная гарантия, а по отдельным региональным решениям (часть 4)."
+        },
+        {
+          text: "В законе написано «обучающиеся» — значит, это касается вообще всех",
+          correct: false,
+          compliance: -10,
+          explain: "Неточно: часть 2.1 адресована конкретно начальной школе, а не «обучающимся» в общем смысле — это частая путаница."
+        }
+      ]
+    },
+    {
+      ref: "ч. 4–5 ст. 37",
+      title: "Регион на мели",
+      scenario: "Региональный минфин заявляет: денег на обязательные бесплатные обеды малышам в этом году нет вообще. Какой у региона есть законный выход?",
+      options: [
+        {
+          text: "Заявиться на софинансирование из федерального бюджета",
+          correct: true,
+          compliance: 10,
+          explain: "Верно: часть 5 прямо предусматривает субсидии из федерального бюджета регионам на софинансирование бесплатного горячего питания младших школьников. А уже дополнительные льготы сверх этого регион вводит и финансирует сам — по части 4."
+        },
+        {
+          text: "Ничего не поделать — регион разбирается сам",
+          correct: false,
+          compliance: -8,
+          explain: "Не совсем — закон закладывает именно механизм поддержки: федеральные субсидии по части 5, а не «регион наедине с проблемой»."
+        }
+      ]
+    }
+  ];
+
+  var LAW_LIST = [
+    { part: "ч. 1", text: "организацию питания обеспечивает сама образовательная организация." },
+    { part: "ч. 2", text: "расписание обязано включать перерыв достаточной продолжительности для еды." },
+    { part: "ч. 2.1", text: "ученикам 1–4 класса в гос./муниципальных школах положено бесплатное горячее питание не реже раза в день, за счёт бюджета." },
+    { part: "ч. 4", text: "дополнительные льготные категории и порядок питания вне этой гарантии устанавливают регион и муниципалитет." },
+    { part: "ч. 5", text: "на бесплатное горячее питание младших школьников регионам положены субсидии из федерального бюджета." }
+  ];
+
+  var START_COMPLIANCE = 60;
+
+  var state = {
+    index: 0,
+    compliance: START_COMPLIANCE,
+    answered: false
+  };
+
+  var gameEl = document.getElementById("game");
+  var dotsEl = document.getElementById("dots");
+  var complianceValueEl = document.getElementById("complianceValue");
+  var complianceFillEl = document.getElementById("complianceFill");
+
+  function fmtDelta(n){
+    if(n === 0) return { text: "0%", cls: "zero" };
+    var sign = n > 0 ? "+" : "−";
+    var value = Math.abs(n);
+    var text = sign + value + "%";
+    return { text: text, cls: n > 0 ? "pos" : "neg" };
+  }
+
+  function updateMeters(){
+    var compliance = Math.max(0, Math.min(100, state.compliance));
+    complianceValueEl.textContent = compliance + "%";
+    complianceFillEl.style.width = compliance + "%";
+    complianceFillEl.classList.remove("warn", "danger");
+    if(compliance < 60){
+      complianceFillEl.classList.add("danger");
+    } else if(compliance < 85){
+      complianceFillEl.classList.add("warn");
+    }
+  }
+
+  function renderDots(){
+    dotsEl.innerHTML = "";
+    for(var i = 0; i < TICKETS.length; i++){
+      var dot = document.createElement("div");
+      var cls = "dot";
+      if(i < state.index){
+        cls += " done";
+      } else if(i === state.index){
+        cls += " current";
+      }
+      dot.className = cls;
+      dot.textContent = String(i + 1).padStart(2, "0");
+      dotsEl.appendChild(dot);
+    }
+  }
+
+  function isLast(){
+    return state.index === TICKETS.length - 1;
+  }
+
+  function renderTicket(){
+    var t = TICKETS[state.index];
+    var html = "";
+    html += '<div class="ticket">';
+    html += '<div class="ticket-head">';
+    html += '<span class="ticket-num">ТАЛОН № ' + String(state.index + 1).padStart(2, "0") + '</span>';
+    html += '<span class="ticket-ref">' + escapeHtml(t.ref) + '</span>';
+    html += '</div>';
+    html += '<h2 class="ticket-title">' + escapeHtml(t.title) + '</h2>';
+    html += '<p class="scenario">' + escapeHtml(t.scenario) + '</p>';
+    html += '<div class="options" id="options">';
+    for(var i = 0; i < t.options.length; i++){
+      html += '<button type="button" class="option" data-idx="' + i + '">' + escapeHtml(t.options[i].text) + '</button>';
+    }
+    html += '</div>';
+    html += '<div class="result" id="result"></div>';
+    html += '</div>';
+
+    gameEl.innerHTML = html;
+    renderDots();
+    updateMeters();
+
+    var optionButtons = gameEl.querySelectorAll(".option");
+    for(var j = 0; j < optionButtons.length; j++){
+      optionButtons[j].addEventListener("click", onOptionClick);
+    }
+  }
+
+  function escapeHtml(str){
+    var div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function onOptionClick(e){
+    if(state.answered) return;
+    state.answered = true;
+
+    var idx = parseInt(e.currentTarget.getAttribute("data-idx"), 10);
+    var t = TICKETS[state.index];
+    var chosen = t.options[idx];
+
+    var buttons = gameEl.querySelectorAll(".option");
+    for(var i = 0; i < buttons.length; i++){
+      buttons[i].disabled = true;
+    }
+    e.currentTarget.classList.add(chosen.correct ? "chosen-correct" : "chosen-incorrect");
+
+    state.compliance = Math.max(0, Math.min(100, state.compliance + chosen.compliance));
+    updateMeters();
+
+    var complianceDelta = fmtDelta(chosen.compliance);
+
+    var resultEl = document.getElementById("result");
+    var stampCls = chosen.correct ? "approved" : "violation";
+    var stampText = chosen.correct ? "ОДОБРЕНО" : "НАРУШЕНИЕ";
+
+    var html = "";
+    html += '<div class="stamp-row"><span class="stamp ' + stampCls + '">' + stampText + '</span></div>';
+    html += '<p class="explanation">' + escapeHtml(chosen.explain) + '</p>';
+    html += '<div class="deltas">';
+    html += '<span><span class="delta-label">Соответствие: </span><span class="delta-value ' + complianceDelta.cls + '">' + complianceDelta.text + '</span></span>';
+    html += '</div>';
+    html += '<button type="button" class="next-btn" id="nextBtn">' + (isLast() ? "Показать итог смены" : "Следующий талон") + '</button>';
+
+    resultEl.innerHTML = html;
+    document.getElementById("nextBtn").addEventListener("click", onNextClick);
+    document.getElementById("nextBtn").focus();
+  }
+
+  function onNextClick(){
+    if(isLast()){
+      renderEnd();
+    } else {
+      state.index += 1;
+      state.answered = false;
+      renderTicket();
+    }
+  }
+
+  function renderEnd(){
+    dotsEl.innerHTML = "";
+    for(var i = 0; i < TICKETS.length; i++){
+      var dot = document.createElement("div");
+      dot.className = "dot done";
+      dot.textContent = String(i + 1).padStart(2, "0");
+      dotsEl.appendChild(dot);
+    }
+
+    var compliance = Math.max(0, Math.min(100, state.compliance));
+    var verdictCls, verdictText;
+    if(compliance >= 85){
+      verdictCls = "clean";
+      verdictText = "Смена закрыта чисто.";
+    } else if(compliance >= 60){
+      verdictCls = "warn";
+      verdictText = "Смена прошла в целом по закону, но с замечаниями.";
+    } else {
+      verdictCls = "bad";
+      verdictText = "Почти гарантированное предписание от прокуратуры.";
+    }
+
+    var html = "";
+    html += '<div class="ticket end-screen">';
+    html += '<h2>Конец смены</h2>';
+    html += '<div class="end-stats">';
+    html += '<div class="end-stat"><span class="meter-label">Итоговое соответствие</span><span class="meter-value">' + compliance + '%</span></div>';
+    html += '</div>';
+    html += '<p class="verdict ' + verdictCls + '">' + verdictText + '</p>';
+    html += '<ul class="law-list">';
+    for(var i = 0; i < LAW_LIST.length; i++){
+      html += '<li><b>' + escapeHtml(LAW_LIST[i].part) + '</b> — ' + escapeHtml(LAW_LIST[i].text) + '</li>';
+    }
+    html += '</ul>';
+    html += '<p class="footnote">Бонус-факт: для школ в сфере обороны и безопасности часть 3 статьи 37 отдаёт порядок питания на усмотрение их учредителей — отдельная история, в игру не попала.</p>';
+    html += '<button type="button" class="restart-btn" id="restartBtn">Начать смену заново</button>';
+    html += '</div>';
+
+    gameEl.innerHTML = html;
+    document.getElementById("restartBtn").addEventListener("click", onRestart);
+  }
+
+  function onRestart(){
+    state.index = 0;
+    state.compliance = START_COMPLIANCE;
+    state.answered = false;
+    renderTicket();
+  }
+
+  renderTicket();
+})();
+</script>
+</body>
+</html>
